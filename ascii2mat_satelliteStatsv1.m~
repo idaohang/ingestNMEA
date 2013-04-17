@@ -1,0 +1,122 @@
+%filename='NMEAtest.log';
+filename='L13satStatsBAO3.log';
+%function [t,satellites,PRN,SNR] = ascii2mat_satelliteStats(filename)
+    
+    % Count lines in the file
+    inFile = fopen(filename,'rt');
+    nLines = 0;
+    GPRMClines = 0;
+    GPGSVlines = 0;
+    while (fgets(inFile) ~= -1),
+        line = fgetl(inFile);
+        if ~ischar(line), break, end;
+        if regexp(line,'.+GPRMC.+')
+            GPRMClines = GPRMClines+1;
+        elseif regexp(line,'.+GPGSV.+')
+            GPGSVlines = GPGSVlines+1;
+        end
+        nLines = nLines+1;
+    end
+    fclose(inFile);
+    
+    string = '';
+    message = 1;
+    
+    % We will have one cell containing all satellite data for each GPRMC message
+    %
+    % PRN = 
+    % [ a b c d e f g h i j k l ]      //timestamp 1
+    % [ a b c d e f g h i j k l ]      //timestamp 2
+    % [ a b c d e f g h i j k l ]      //timestamp n
+    %
+    % a-l = satellite Pseudo-Random-Number (PRN, unique identifier)
+    
+    keys = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,...
+        24,25,26,27,28,29,30,31,32];
+    value = [repmat(NaN,GPRMClines,1)];
+    values = [repmat(value,32,1)];
+    dataMap = containers.Map(keys,values);
+    
+    % times: a list of NaN values, one for each time stamp.  These will get
+    % 
+    times = repmat(NaN,1,GPRMClines);
+    data = repmat(times,32,1);
+    
+    PRN = cell(GPRMClines,1);
+    ELE = cell(GPRMClines,1);
+    AZM = cell(GPRMClines,1);
+    SNR = cell(GPRMClines,1);
+   
+    satellites = zeros(nLines/4,1);
+    rawDates = repmat({''},nLines/4,2);
+    
+    inFile = fopen(filename);
+    
+    while 1
+        line = fgetl(inFile);
+        if ~ischar(line), break, end
+        
+        % Read GPRMC sentence
+        if regexp(line,'.+GPRMC.+')
+            strings = strsplit(',',line);
+            rawDates(message,1) = strings(2);
+            rawDates(message,2) = strings(10);
+
+            gpgsv = [];
+            %gpgsvMessages=10;
+            
+            line = fgetl(inFile);
+            strings = strsplit(',',line);
+            gpgsvMessages = str2double(strings(2));
+            satellites(message) = str2double(strings(4));
+            lastValue = strings(end);
+            strings{end} = lastValue{1}(1:2);
+            gpgsv = [gpgsv,strings(5:end)];
+            
+            for i=1:gpgsvMessages-1,
+                line = fgetl(inFile);
+                strings = strsplit(',',line);
+                gpgsvMessages = str2double(strings(2));
+                satellites(message) = str2double(strings(4));
+                lastValue = strings(end);
+                strings{end} = lastValue{1}(1:2);
+                gpgsv = [gpgsv,strings(5:end)];
+            end                
+        
+            PRNlist = [];
+            ELElist = [];
+            AZMlist = [];
+            SNRlist = [];
+            for i=1:satellites(message),
+                PRNlist = [str2double(gpgsv{i*4-3}), PRNlist];
+                ELElist = [str2double(gpgsv{i*4-2}), ELElist];
+                AZMlist = [str2double(gpgsv{i*4-1}), AZMlist];
+                SNRlist = [str2double(gpgsv{i*4}), SNRlist];
+            end
+            PRN{message} = PRNlist;
+            ELE{message} = ELElist;
+            AZM{message} = AZMlist;
+            SNR{message} = SNRlist;
+        end
+        
+        message=message+1;
+        %disp(line)
+    end
+    fclose(inFile);
+    
+    avgSNR = zeros(length(SNR),1);
+    for i=1:length(SNR),
+        avgSNR(i) = mean(SNR{i});
+    end
+            
+    plot(avgSNR);
+    %plot(mean(SNR));
+    %plot(t_avg,tDiff1213_avg,'r',t_avg,tDiff1214_avg,'b');datetick('x',13);
+%hold on
+%plot(tNTP,offsetNTP,'b');
+%xlabel('Time of recording (hh:mm:ss)');
+%ylabel('Time (seconds)');
+%ylim([0 14e-5]);
+%legend('l12-l13','NTP offset');
+
+

@@ -1,0 +1,34 @@
+% Author:   Scott Pearse
+% Date:     April 12, 2013
+
+% This routine loads sonic data from two dataloggers and calculates the
+% differences between their readings.  These differences are then plotted
+% against an NTP file to show whether NTP's offset is a contributor to the
+% offsets between the two loggers.
+
+%load data
+[ l12t, l12tm, l12u, v, w, T, err ] = ascii2mat_sonic('L12_1_20130414182744.dat');
+[ l13t, l13tm, l13u, v, w, T, err ] = ascii2mat_sonic('L13_1_20130414182749.dat');
+[ l14t, l14tm, l13u, v, w, T, err ] = ascii2mat_sonic('L14_1_20130414182754.dat');
+%[tNTP, IPAddr, status, offsetNTP, delay, dispersion, skew] = ascii2mat_ntpPeerstats('peerstats.gpsTest');
+
+%calculate 10-second averaged record times for x-axis
+t_avg = block_avg_20121115_AM(320,l12t);
+
+%calculate differences and 10-second binned averages
+tDiff1213=(l12t-l13t)*86400;
+tDiff1213_avg=block_avg_20121115_AM(320,tDiff1213);
+
+tDiff1214=(l12t-l14t)*86400;
+tDiff1214_avg=block_avg_20121115_AM(320,tDiff1214);
+
+tDiff1314=(l13t-l14t)*86400;
+tDiff1314_avg=block_avg_20121115_AM(320,tDiff1314);
+
+% plot(t_avg,tDiff1213_avg,'r',t_avg,tDiff1214_avg,'b');datetick('x',13);
+% hold on
+% plot(tNTP,offsetNTP,'b');
+% xlabel('Time of recording (hh:mm:ss)');
+% ylabel('Time (seconds)');
+% ylim([0 14e-5]);
+%legend('l12-l13','NTP offset');
